@@ -39,16 +39,16 @@ class_name_2_model = {
 
 def parse_arguments(parser:argparse.ArgumentParser):
     # data Hyperparameters
-    parser.add_argument('--device', type=str, default="cpu", choices=['cpu', 'cuda:0', 'cuda:1', 'cuda:2', 'cuda:3', 'cuda:4', 'cuda:5', 'cuda:6', 'cuda:7'], help="GPU/CPU devices")
-    parser.add_argument('--batch_size', type=int, default=30)
+    parser.add_argument('--device', type=str, default="cuda:0", choices=['cpu', 'cuda:0', 'cuda:1', 'cuda:2', 'cuda:3', 'cuda:4', 'cuda:5', 'cuda:6', 'cuda:7'], help="GPU/CPU devices")
+    parser.add_argument('--batch_size', type=int, default=20)
     parser.add_argument('--train_num', type=int, default=-1, help="The number of training data, -1 means all data")
     parser.add_argument('--dev_num', type=int, default=-1, help="The number of development data, -1 means all data")
     parser.add_argument('--test_num', type=int, default=-1, help="The number of development data, -1 means all data")
 
 
-    parser.add_argument('--train_file', type=str, default="data/math23k/train23k_processed_nodup.json")
-    parser.add_argument('--dev_file', type=str, default="data/math23k/valid23k_processed_nodup.json")
-    parser.add_argument('--test_file', type=str, default="data/math23k/test23k_processed_nodup.json")
+    parser.add_argument('--train_file', type=str, default="data/mawps_asdiv-a_svamp/trainset_nodup.json")
+    parser.add_argument('--dev_file', type=str, default="data/mawps_asdiv-a_svamp/testset_nodup.json")
+    parser.add_argument('--test_file', type=str, default="data/mawps_asdiv-a_svamp/testset_nodup.json")
     # parser.add_argument('--train_file', type=str, default="data/mawps-single/mawps_train_nodup.json")
     # parser.add_argument('--dev_file', type=str, default="data/mawps-single/mawps_test_nodup.json")
 
@@ -57,24 +57,24 @@ def parse_arguments(parser:argparse.ArgumentParser):
 
     # model
     parser.add_argument('--seed', type=int, default=42, help="random seed")
-    parser.add_argument('--model_folder', type=str, default="math_solver", help="the name of the models, to save the model")
+    parser.add_argument('--model_folder', type=str, default="svamp_roberta-base_gru-jisubase2", help="the name of the models, to save the model")
     parser.add_argument('--bert_folder', type=str, default="", help="The folder name that contains the BERT model")
-    parser.add_argument('--bert_model_name', type=str, default="chinese-roberta-wwm-ext",
+    parser.add_argument('--bert_model_name', type=str, default="roberta-base",
                         help="The bert model name to used")
     # parser.add_argument('--bert_folder', type=str, default="", help="The folder name that contains the BERT model")
     # parser.add_argument('--bert_model_name', type=str, default="roberta-base",
     #                     help="The bert model name to used")
-    parser.add_argument('--height', type=int, default=10, help="the model height")
+    parser.add_argument('--height', type=int, default=7, help="the model height")
     parser.add_argument('--train_max_height', type=int, default=100, help="the maximum height for training data")
 
     parser.add_argument('--var_update_mode', type=str, default="gru", help="variable update mode")
 
     # training
-    parser.add_argument('--mode', type=str, default="train", choices=["train", "test"], help="learning rate of the AdamW optimizer")
+    parser.add_argument('--mode', type=str, default="test", choices=["train", "test"], help="learning rate of the AdamW optimizer")
     parser.add_argument('--learning_rate', type=float, default=2e-5, help="learning rate of the AdamW optimizer")
     parser.add_argument('--max_grad_norm', type=float, default=1.0, help="The maximum gradient norm")
-    parser.add_argument('--num_epochs', type=int, default=20, help="The number of epochs to run")
-    parser.add_argument('--fp16', type=int, default=0, choices=[0,1], help="using fp16 to train the model")
+    parser.add_argument('--num_epochs', type=int, default=1000, help="The number of epochs to run")
+    parser.add_argument('--fp16', type=int, default=1, choices=[0,1], help="using fp16 to train the model")
 
     parser.add_argument('--parallel', type=int, default=0, choices=[0,1], help="parallelizing model")
 
@@ -245,6 +245,7 @@ def evaluate(valid_dataloader: DataLoader, model: nn.Module, dev: torch.device, 
     num_label_step_total = Counter()
     insts = valid_dataloader.dataset.insts
     number_instances_remove = valid_dataloader.dataset.number_instances_remove
+
     for inst_predictions, inst_labels in zip(predictions, labels):
         num_label_step_total[len(inst_labels)] += 1
         if len(inst_predictions) != len(inst_labels):
