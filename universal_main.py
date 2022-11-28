@@ -11,6 +11,7 @@ import numpy as np
 import os
 import random
 from src.model.universal_model import UniversalModel, UniversalModel_Roberta
+from src.model.universal_model import UniversalModel_Deberta
 from collections import Counter
 from src.eval.utils import is_value_correct
 from typing import List, Tuple
@@ -35,6 +36,8 @@ class_name_2_model = {
         "xlm-roberta-base": UniversalModel_Roberta,
         'hfl/chinese-bert-wwm-ext': UniversalModel,
         'hfl/chinese-roberta-wwm-ext': UniversalModel,
+        'microsoft/deberta-base': UniversalModel_Deberta,
+        'microsoft/deberta-v3-large-base': UniversalModel_Deberta,
     }
 
 def parse_arguments(parser:argparse.ArgumentParser):
@@ -57,9 +60,9 @@ def parse_arguments(parser:argparse.ArgumentParser):
 
     # model
     parser.add_argument('--seed', type=int, default=42, help="random seed")
-    parser.add_argument('--model_folder', type=str, default="svamp_roberta-base_gru-jisubase2", help="the name of the models, to save the model")
+    parser.add_argument('--model_folder', type=str, default="svamp_deberta-base_attn-first", help="the name of the models, to save the model")
     parser.add_argument('--bert_folder', type=str, default="", help="The folder name that contains the BERT model")
-    parser.add_argument('--bert_model_name', type=str, default="roberta-base",
+    parser.add_argument('--bert_model_name', type=str, default="microsoft/deberta-base",
                         help="The bert model name to used")
     # parser.add_argument('--bert_folder', type=str, default="", help="The folder name that contains the BERT model")
     # parser.add_argument('--bert_model_name', type=str, default="roberta-base",
@@ -67,10 +70,10 @@ def parse_arguments(parser:argparse.ArgumentParser):
     parser.add_argument('--height', type=int, default=7, help="the model height")
     parser.add_argument('--train_max_height', type=int, default=100, help="the maximum height for training data")
 
-    parser.add_argument('--var_update_mode', type=str, default="gru", help="variable update mode")
+    parser.add_argument('--var_update_mode', type=str, default="attn", choices=['gru', 'attn'], help="variable update mode")
 
     # training
-    parser.add_argument('--mode', type=str, default="test", choices=["train", "test"], help="learning rate of the AdamW optimizer")
+    parser.add_argument('--mode', type=str, default="train", choices=["train", "test"], help="learning rate of the AdamW optimizer")
     parser.add_argument('--learning_rate', type=float, default=2e-5, help="learning rate of the AdamW optimizer")
     parser.add_argument('--max_grad_norm', type=float, default=1.0, help="The maximum gradient norm")
     parser.add_argument('--num_epochs', type=int, default=1000, help="The number of epochs to run")

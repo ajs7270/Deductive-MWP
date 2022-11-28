@@ -30,6 +30,7 @@ class_name_2_quant_list = {
     'bert-base-chinese': ['<', 'q', '##uan', '##t', '>'],
     'hfl/chinese-bert-wwm-ext': ['<', 'q', '##uan', '##t', '>'],
     'hfl/chinese-roberta-wwm-ext': ['<', 'q', '##uan', '##t', '>'],
+    'microsoft/deberta-base': ['Ġ<', 'quant', '>'],
 }
 
 UniFeature = collections.namedtuple('UniFeature', 'input_ids attention_mask token_type_ids variable_indexs_start variable_indexs_end num_variables variable_index_mask labels label_height_mask')
@@ -64,7 +65,7 @@ class UniversalDataset(Dataset):
         data = read_data(file=file)
         if number > 0:
             data = data[:number]
-        # ## tokenization
+        ## tokenization
         self._features = []
         max_num_steps = 0
         self.insts = []

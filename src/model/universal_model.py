@@ -1,5 +1,6 @@
 from transformers.models.bert.modeling_bert import BertModel, BertPreTrainedModel, BertConfig
 from transformers import RobertaModel, RobertaConfig, RobertaPreTrainedModel
+from transformers import DebertaModel, DebertaConfig, DebertaPreTrainedModel
 import torch.nn as nn
 import torch
 import torch.utils.checkpoint
@@ -58,7 +59,9 @@ def deductive_forward(cls,
         output_attentions=None,
         output_hidden_states=None,
         return_dict=None,
-        is_eval=False):
+        is_eval=False,
+        bert_model_name:str="roberta"
+                      ):
     r"""
     labels (:obj:`torch.LongTensor` of shape :obj:`(batch_size,)`, `optional`):
         Labels for computing the sequence classification/regression loss. Indices should be in :obj:`[0, ...,
@@ -66,17 +69,30 @@ def deductive_forward(cls,
         If :obj:`config.num_labels > 1` a classification loss is computed (Cross-Entropy).
     """
     return_dict = return_dict if return_dict is not None else cls.config.use_return_dict
-    outputs = encoder(  # batch_size, sent_len, hidden_size,
-        input_ids,
-        attention_mask=attention_mask,
-        token_type_ids=token_type_ids,
-        position_ids=position_ids,
-        head_mask=head_mask,
-        inputs_embeds=inputs_embeds,
-        output_attentions=output_attentions,
-        output_hidden_states=output_hidden_states,
-        return_dict=return_dict,
-    )
+    # encoder는 roberta model을 사용
+    if bert_model_name == 'deberta':
+        outputs = encoder(  # batch_size, sent_len, hidden_size,
+            input_ids,
+            attention_mask=attention_mask,
+            token_type_ids=token_type_ids,
+            position_ids=position_ids,
+            inputs_embeds=inputs_embeds,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
+        )
+    else:  # Roberta
+        outputs = encoder(  # batch_size, sent_len, hidden_size,
+            input_ids,
+            attention_mask=attention_mask,
+            token_type_ids=token_type_ids,
+            position_ids=position_ids,
+            head_mask=head_mask,
+            inputs_embeds=inputs_embeds,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
+        )
     batch_size, sent_len, hidden_size = outputs.last_hidden_state.size()
     if labels is not None and not is_eval:
         # is_train
@@ -353,7 +369,8 @@ class UniversalModel(BertPreTrainedModel):
             output_attentions,
             output_hidden_states,
             return_dict,
-            is_eval
+            is_eval,
+            "bert"
         )
 
 
@@ -413,9 +430,70 @@ class UniversalModel_Roberta(RobertaPreTrainedModel):
             output_attentions,
             output_hidden_states,
             return_dict,
-            is_eval
+            is_eval,
+            "roberta"
         )
 
+
+class UniversalModel_Deberta(DebertaPreTrainedModel):
+
+    def __init__(self, config: DebertaConfig,
+                 height: int = 4,
+                 constant_num: int = 0,
+                 var_update_mode: str= 'gru'):
+        super().__init__(config)
+        self.num_labels = config.num_labels  ## should be 6
+        assert self.num_labels == 6 or self.num_labels == 8
+        self.config = config
+
+        self.deberta = DebertaModel(config)
+        initialize_param(cls=self,
+                         config=config,
+                         constant_num=constant_num,
+                         height=height,
+                         var_update_mode=var_update_mode)
+
+
+    def forward(self,
+        input_ids=None, ## batch_size  x max_seq_length
+        attention_mask=None,
+        token_type_ids=None,
+        position_ids=None,
+        variable_indexs_start: torch.Tensor = None, ## batch_size x num_variable
+        variable_indexs_end: torch.Tensor = None,  ## batch_size x num_variable
+        num_variables: torch.Tensor = None, # batch_size [3,4]
+        variable_index_mask:torch.Tensor = None, # batch_size x num_variable
+        head_mask=None,
+        inputs_embeds=None,
+        labels=None,
+        ## (batch_size, height, 4). (left_var_index, right_var_index, label_index, stop_label) when height>=1, left_var_index always -1, because left always m0
+        label_height_mask = None, #  (batch_size, height)
+        output_attentions=None,
+        output_hidden_states=None,
+        return_dict=None,
+        is_eval=False
+    ):
+        return deductive_forward(
+            self,
+            self.deberta,
+            input_ids,
+            attention_mask,
+            token_type_ids,
+            position_ids,
+            variable_indexs_start,
+            variable_indexs_end,
+            num_variables,
+            variable_index_mask,
+            head_mask,
+            inputs_embeds,
+            labels,
+            label_height_mask,
+            output_attentions,
+            output_hidden_states,
+            return_dict,
+            is_eval,
+            "deberta"
+        )
 
 if __name__ == '__main__':
     pass
