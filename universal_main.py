@@ -11,7 +11,7 @@ import numpy as np
 import os
 import random
 from src.model.universal_model import UniversalModel, UniversalModel_Roberta
-from src.model.universal_model import UniversalModel_Deberta
+from src.model.universal_model import UniversalModel_Deberta, UniversalModel_Deberta_v2
 from collections import Counter
 from src.eval.utils import is_value_correct
 from typing import List, Tuple
@@ -37,13 +37,13 @@ class_name_2_model = {
         'hfl/chinese-bert-wwm-ext': UniversalModel,
         'hfl/chinese-roberta-wwm-ext': UniversalModel,
         'microsoft/deberta-base': UniversalModel_Deberta,
-        'microsoft/deberta-v3-large-base': UniversalModel_Deberta,
+        "microsoft/deberta-v2-xxlarge": UniversalModel_Deberta_v2,
     }
 
 def parse_arguments(parser:argparse.ArgumentParser):
     # data Hyperparameters
     parser.add_argument('--device', type=str, default="cuda:0", choices=['cpu', 'cuda:0', 'cuda:1', 'cuda:2', 'cuda:3', 'cuda:4', 'cuda:5', 'cuda:6', 'cuda:7'], help="GPU/CPU devices")
-    parser.add_argument('--batch_size', type=int, default=20)
+    parser.add_argument('--batch_size', type=int, default=1)
     parser.add_argument('--train_num', type=int, default=-1, help="The number of training data, -1 means all data")
     parser.add_argument('--dev_num', type=int, default=-1, help="The number of development data, -1 means all data")
     parser.add_argument('--test_num', type=int, default=-1, help="The number of development data, -1 means all data")
@@ -60,9 +60,9 @@ def parse_arguments(parser:argparse.ArgumentParser):
 
     # model
     parser.add_argument('--seed', type=int, default=42, help="random seed")
-    parser.add_argument('--model_folder', type=str, default="svamp_deberta-base_attn-first", help="the name of the models, to save the model")
+    parser.add_argument('--model_folder', type=str, default="svamp-deberta-v2-xxlarge-base_gru", help="the name of the models, to save the model")
     parser.add_argument('--bert_folder', type=str, default="", help="The folder name that contains the BERT model")
-    parser.add_argument('--bert_model_name', type=str, default="microsoft/deberta-base",
+    parser.add_argument('--bert_model_name', type=str, default="microsoft/deberta-v2-xxlarge",
                         help="The bert model name to used")
     # parser.add_argument('--bert_folder', type=str, default="", help="The folder name that contains the BERT model")
     # parser.add_argument('--bert_model_name', type=str, default="roberta-base",
@@ -70,7 +70,7 @@ def parse_arguments(parser:argparse.ArgumentParser):
     parser.add_argument('--height', type=int, default=7, help="the model height")
     parser.add_argument('--train_max_height', type=int, default=100, help="the maximum height for training data")
 
-    parser.add_argument('--var_update_mode', type=str, default="attn", choices=['gru', 'attn'], help="variable update mode")
+    parser.add_argument('--var_update_mode', type=str, default="gru", choices=['gru', 'attn'], help="variable update mode")
 
     # training
     parser.add_argument('--mode', type=str, default="train", choices=["train", "test"], help="learning rate of the AdamW optimizer")
@@ -168,7 +168,8 @@ def train(config: Config, train_dataloader: DataLoader, num_epochs: int,
                 model_to_save.save_pretrained(f"model_files/{config.model_folder}")
                 tokenizer.save_pretrained(f"model_files/{config.model_folder}")
     logger.info(f"[Model Info] Best validation performance: {best_val_acc_performance}")
-    model = MODEL_CLASS.from_pretrained(f"model_files/{config.model_folder}",
+    # model = MODEL_CLASS.from_pretrained(f"model_files/{config.model_folder}",
+    model = MODEL_CLASS.from_pretrained(f"{config.bert_model_name}",
                                            num_labels=num_labels,
                                            height=config.height,
                                            constant_num=constant_num, var_update_mode=config.var_update_mode).to(dev)
@@ -389,7 +390,13 @@ def main():
     else:
         logger.info(f"Testing the model now.")
         MODEL_CLASS = class_name_2_model[bert_model_name]
-        model = MODEL_CLASS.from_pretrained(f"model_files/{conf.model_folder}",
+
+        model_path = None
+        if conf.bert_model_name == "microsoft/deberta-v2-xxlarge":
+            model_path = conf.bert_model_name
+        else:
+            model_path = f"model_files/{conf.model_folder}"
+        model = MODEL_CLASS.from_pretrained(model_path,
                                                num_labels=num_labels,
                                                height = conf.height,
                                                constant_num = constant_number,

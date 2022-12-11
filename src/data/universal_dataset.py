@@ -31,6 +31,7 @@ class_name_2_quant_list = {
     'hfl/chinese-bert-wwm-ext': ['<', 'q', '##uan', '##t', '>'],
     'hfl/chinese-roberta-wwm-ext': ['<', 'q', '##uan', '##t', '>'],
     'microsoft/deberta-base': ['Ġ<', 'quant', '>'],
+    'microsoft/deberta-v2-xxlarge': ['▁<', 'quant', '>'],
 }
 
 UniFeature = collections.namedtuple('UniFeature', 'input_ids attention_mask token_type_ids variable_indexs_start variable_indexs_end num_variables variable_index_mask labels label_height_mask')
