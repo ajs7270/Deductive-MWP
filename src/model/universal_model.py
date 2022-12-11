@@ -1,6 +1,7 @@
 from transformers.models.bert.modeling_bert import BertModel, BertPreTrainedModel, BertConfig
 from transformers import RobertaModel, RobertaConfig, RobertaPreTrainedModel
 from transformers import DebertaModel, DebertaConfig, DebertaPreTrainedModel
+from transformers import DebertaV2Model, DebertaV2Config, DebertaV2PreTrainedModel
 import torch.nn as nn
 import torch
 import torch.utils.checkpoint
@@ -447,6 +448,67 @@ class UniversalModel_Deberta(DebertaPreTrainedModel):
         self.config = config
 
         self.deberta = DebertaModel(config)
+        initialize_param(cls=self,
+                         config=config,
+                         constant_num=constant_num,
+                         height=height,
+                         var_update_mode=var_update_mode)
+
+
+    def forward(self,
+        input_ids=None, ## batch_size  x max_seq_length
+        attention_mask=None,
+        token_type_ids=None,
+        position_ids=None,
+        variable_indexs_start: torch.Tensor = None, ## batch_size x num_variable
+        variable_indexs_end: torch.Tensor = None,  ## batch_size x num_variable
+        num_variables: torch.Tensor = None, # batch_size [3,4]
+        variable_index_mask:torch.Tensor = None, # batch_size x num_variable
+        head_mask=None,
+        inputs_embeds=None,
+        labels=None,
+        ## (batch_size, height, 4). (left_var_index, right_var_index, label_index, stop_label) when height>=1, left_var_index always -1, because left always m0
+        label_height_mask = None, #  (batch_size, height)
+        output_attentions=None,
+        output_hidden_states=None,
+        return_dict=None,
+        is_eval=False
+    ):
+        return deductive_forward(
+            self,
+            self.deberta,
+            input_ids,
+            attention_mask,
+            token_type_ids,
+            position_ids,
+            variable_indexs_start,
+            variable_indexs_end,
+            num_variables,
+            variable_index_mask,
+            head_mask,
+            inputs_embeds,
+            labels,
+            label_height_mask,
+            output_attentions,
+            output_hidden_states,
+            return_dict,
+            is_eval,
+            "deberta"
+        )
+
+
+class UniversalModel_Deberta_v2(DebertaV2PreTrainedModel):
+
+    def __init__(self, config: DebertaV2Config,
+                 height: int = 4,
+                 constant_num: int = 0,
+                 var_update_mode: str= 'gru'):
+        super().__init__(config)
+        self.num_labels = config.num_labels  ## should be 6
+        assert self.num_labels == 6 or self.num_labels == 8
+        self.config = config
+
+        self.deberta = DebertaV2Model(config)
         initialize_param(cls=self,
                          config=config,
                          constant_num=constant_num,
