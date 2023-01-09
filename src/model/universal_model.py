@@ -110,6 +110,10 @@ def deductive_forward(cls,
         var_hidden_states = var_start_hidden_states + var_end_hidden_states
     else:
         var_hidden_states = var_start_hidden_states
+
+    # ajs : add context embedding
+    var_hidden_states += outputs.last_hidden_state[:, 0, :].unsqueeze(1).expand(batch_size, 1, hidden_size)
+
     if cls.constant_num > 0:
         constant_hidden_states = cls.const_rep.unsqueeze(0).expand(batch_size, cls.constant_num, hidden_size)
         var_hidden_states = torch.cat([constant_hidden_states, var_hidden_states], dim=1)

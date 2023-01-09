@@ -42,7 +42,7 @@ class_name_2_model = {
 
 def parse_arguments(parser:argparse.ArgumentParser):
     # data Hyperparameters
-    parser.add_argument('--device', type=str, default="cuda:0", choices=['cpu', 'cuda:0', 'cuda:1', 'cuda:2', 'cuda:3', 'cuda:4', 'cuda:5', 'cuda:6', 'cuda:7'], help="GPU/CPU devices")
+    parser.add_argument('--device', type=str, default="cpu", choices=['cpu', 'mps', 'cuda:0', 'cuda:1', 'cuda:2', 'cuda:3', 'cuda:4', 'cuda:5', 'cuda:6', 'cuda:7'], help="GPU/CPU/MPS devices")
     parser.add_argument('--batch_size', type=int, default=1)
     parser.add_argument('--train_num', type=int, default=-1, help="The number of training data, -1 means all data")
     parser.add_argument('--dev_num', type=int, default=-1, help="The number of development data, -1 means all data")
@@ -60,9 +60,9 @@ def parse_arguments(parser:argparse.ArgumentParser):
 
     # model
     parser.add_argument('--seed', type=int, default=42, help="random seed")
-    parser.add_argument('--model_folder', type=str, default="svamp-deberta-v2-xxlarge-base_gru", help="the name of the models, to save the model")
+    parser.add_argument('--model_folder', type=str, default="svamp-gru-condition1-dev", help="the name of the models, to save the model")
     parser.add_argument('--bert_folder', type=str, default="", help="The folder name that contains the BERT model")
-    parser.add_argument('--bert_model_name', type=str, default="microsoft/deberta-v2-xxlarge",
+    parser.add_argument('--bert_model_name', type=str, default="roberta-base",
                         help="The bert model name to used")
     # parser.add_argument('--bert_folder', type=str, default="", help="The folder name that contains the BERT model")
     # parser.add_argument('--bert_model_name', type=str, default="roberta-base",
