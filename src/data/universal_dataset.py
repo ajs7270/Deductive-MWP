@@ -102,6 +102,10 @@ class UniversalDataset(Dataset):
                 raise NotImplementedError("The file type is not supported")
             res = tokenizer.encode_plus(" " + input_text, add_special_tokens=True, return_attention_mask=True)
             input_ids = res["input_ids"]
+            # jsA : Add quant ids
+            quant_ids = self.tokenizer(self.quant_list).input_ids[1:-1]
+            number_tensors = [self.tokenizer(number, return_tensors="pt").input_ids[:, 1:-1] for number in
+                              map(str,obj["num_list"])]
             attention_mask = res["attention_mask"]
             tokens = tokenizer.convert_ids_to_tokens(input_ids)
             var_starts = []
@@ -109,10 +113,28 @@ class UniversalDataset(Dataset):
             quant_num = len(self.quant_list)
             # quants = ['<', 'q', '##uan', '##t', '>'] if not is_roberta_tokenizer else ['Ġ<', 'quant', '>']
             # obtain the start and end position of "<quant>" token
-            for k, token in enumerate(tokens):
-                if (token == self.quant_list[0]) and tokens[k:k + quant_num] == self.quant_list:
-                    var_starts.append(k)
-                    var_ends.append(k + quant_num - 1)
+            # for k, token in enumerate(tokens):
+            #     if (token == self.quant_list[0]) and tokens[k:k + quant_num] == self.quant_list:
+            #         var_starts.append(k)
+            #         var_ends.append(k + quant_num - 1)
+
+            # jsA: Add for loop for extracting explicit number feature.
+            num_count = 0
+            cur = 0
+            while cur < len(input_ids) - len(quant_ids) + 1:
+                if tokens[cur:cur + quant_num] == self.quant_list:
+                    var_starts.append(cur)
+                    var_ends.append(cur + quant_num - 1)
+                    # attention mask 사이즈 조정
+                    attention_mask = attention_mask[:cur] + len(number_tensors[num_count][0]) * [1] + attention_mask[cur + quant_num:]
+                    # question_mask 사이즈 조정
+                    input_ids = input_ids[:cur] +number_tensors[num_count][0].tolist() + input_ids[cur + quant_num:]
+                    # token 사이즈 조정
+                    tokens = tokens[:cur] + tokenizer.convert_ids_to_tokens(number_tensors[num_count][0].tolist()) + tokens[cur + quant_num:]
+
+                    cur += len(number_tensors[num_count][0]) - quant_num
+                    num_count += 1
+                cur += 1
 
             assert len(input_ids) < 512 ## make sure no error in tokenization
             num_variable = len(var_starts)
@@ -201,10 +223,10 @@ class UniversalDataset(Dataset):
                 UniFeature(input_ids=input_ids,
                            attention_mask=attention_mask,
                            token_type_ids = [0] * len(input_ids),
-                           variable_indexs_start=var_starts,
-                           variable_indexs_end=var_ends,
-                           num_variables=num_variable,
-                           variable_index_mask=var_mask,
+                           variable_indexs_start=var_starts, # variable 시작 index : list[int]
+                           variable_indexs_end=var_ends, # variable 끝 index : list[int]
+                           num_variables=num_variable, # variable 개수 : int
+                           variable_index_mask=var_mask, # variable 개수를 mask로 변형 한 것
                            labels = labels,
                            label_height_mask=label_height_mask)
             )

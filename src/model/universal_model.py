@@ -33,8 +33,10 @@ def get_combination_mask(batched_num_variables: torch.Tensor, combination: torch
     :param combination: (num_combinations, 2) 6,2
     :return: batched_comb_mask: (batch_size, num_combinations)
     """
-    batch_size, = batched_num_variables.size() ## [ 2,]
+    batch_size, = batched_num_variables.size() ## [ 2,] => batch = ~~~.size()로 하면 size 변수가 대입됨, batch, = ~~~.size()로 하면 int값이 대입됨
+    # 전체 조합의 개수 => num_combinations
     num_combinations, _ = combination.size() ## 6
+    # expand를 하면 같은 값을 가지는 tensor로 확장됨
     batched_num_variables = batched_num_variables.unsqueeze(1).unsqueeze(2).expand(batch_size, num_combinations, 2) ## (2) -> (2,6,2)
     batched_combination = combination.unsqueeze(0).expand(batch_size, num_combinations, 2)## (6, 2) -> (2,6,2)
     batched_comb_mask = torch.lt(batched_combination, batched_num_variables) ## batch_size, num_combinations, 2
@@ -103,6 +105,7 @@ def deductive_forward(cls,
 
     _, max_num_variable = variable_indexs_start.size()
 
+    # number vector를 만들어 줌
     var_sum = (variable_indexs_start - variable_indexs_end).sum()  ## if add <NUM>, we can just choose one as hidden_states
     var_start_hidden_states = torch.gather(outputs.last_hidden_state, 1, variable_indexs_start.unsqueeze(-1).expand(batch_size, max_num_variable, hidden_size))
     if var_sum != 0:
@@ -114,9 +117,11 @@ def deductive_forward(cls,
     # ajs : add context embedding
     var_hidden_states += outputs.last_hidden_state[:, 0, :].unsqueeze(1).expand(batch_size, 1, hidden_size)
 
+    #
     if cls.constant_num > 0:
         constant_hidden_states = cls.const_rep.unsqueeze(0).expand(batch_size, cls.constant_num, hidden_size)
         var_hidden_states = torch.cat([constant_hidden_states, var_hidden_states], dim=1)
+        # ajs: what is num_variable????
         num_variables = num_variables + cls.constant_num
         max_num_variable = max_num_variable + cls.constant_num
         const_idx_mask = torch.ones((batch_size, cls.constant_num), device=variable_indexs_start.device)
@@ -135,16 +140,18 @@ def deductive_forward(cls,
         if i == 0:
             ## max_num_variable = 4. -> [0,1,2,3]
             num_var_range = torch.arange(0, max_num_variable, device=variable_indexs_start.device)
-            ## 6x2 matrix
+            ## 6x2 matrix => 모든 케이스를 다 봐줘야하므로 조합을 구함 (1,1),(2,2) 처럼 중복으로 등장하는 경우도 생김
             combination = torch.combinations(num_var_range, r=2, with_replacement=True)  ##number_of_combinations x 2
             num_combinations, _ = combination.size()  # number_of_combinations x 2
             # batch_size x num_combinations. 2*6
             batched_combination_mask = get_combination_mask(batched_num_variables=num_variables, combination=combination)  # batch_size, num_combinations
-
+            # torch gather는 특정 index를 뽑을 때 사용 => batch
             var_comb_hidden_states = torch.gather(var_hidden_states, 1,
                                                   combination.view(-1).unsqueeze(0).unsqueeze(-1).expand(batch_size, num_combinations * 2, hidden_size))
             # m0_hidden_states = var_comb_hidden_states.unsqueeze(-2).view(batch_size, num_combinations, 2, hidden_size * 3).sum(dim=-2)
+            # 그냥 combation 형태로 2개의 조합이 있는 tensor 형태로 바꿔줌
             expanded_var_comb_hidden_states = var_comb_hidden_states.unsqueeze(-2).view(batch_size, num_combinations, 2, hidden_size)
+            #
             m0_hidden_states = torch.cat([expanded_var_comb_hidden_states[:, :, 0, :], expanded_var_comb_hidden_states[:, :, 1, :],
                                           expanded_var_comb_hidden_states[:, :, 0, :] * expanded_var_comb_hidden_states[:, :, 1, :]], dim=-1)
             # batch_size, num_combinations/num_m0, hidden_size: 2,6,768
@@ -152,7 +159,9 @@ def deductive_forward(cls,
             ## batch_size, num_combinations/num_m0, num_labels, hidden_size
             m0_label_rep = torch.stack([layer(m0_hidden_states) for layer in linear_modules], dim=2)
             ## batch_size, num_combinations/num_m0, num_labels
+            # labe_rep2label은 linear transformation을 해줌 => 귀찮으니까 neural network에 맡김
             m0_logits = cls.label_rep2label(m0_label_rep).expand(batch_size, num_combinations, cls.num_labels, 2)
+            #
             m0_logits = m0_logits + batched_combination_mask.unsqueeze(-1).unsqueeze(-1).expand(batch_size, num_combinations, cls.num_labels, 2).float().log()
             ## batch_size, num_combinations/num_m0, num_labels, 2
             m0_stopper_logits = cls.stopper(cls.stopper_transformation(m0_label_rep))
